@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparador PVPC vs Tarifa Libre</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 8px;
+            font-size: 1.6rem;
+            color: #1a1a2e;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 24px;
+            font-size: 0.9rem;
+        }
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .panels {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .panel {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .panel h2 {
+            font-size: 1rem;
+            margin-bottom: 14px;
+            padding-bottom: 8px;
+            border-bottom: 3px solid;
+        }
+        .panel-pvpc h2 { border-color: #2563eb; color: #2563eb; }
+        .panel-libre h2 { border-color: #dc2626; color: #dc2626; }
+        .panel-comun h2 { border-color: #7c3aed; color: #7c3aed; }
+        .field {
+            margin-bottom: 12px;
+        }
+        .field label {
+            display: block;
+            font-size: 0.8rem;
+            color: #555;
+            margin-bottom: 3px;
+        }
+        .field input {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1.5px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            transition: border-color 0.2s;
+        }
+        .field input:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+        .chart-container {
+            background: #fff;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            position: relative;
+        }
+        .result-box {
+            margin-top: 16px;
+            padding: 16px 20px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #eef2ff, #f0fdf4);
+            border: 1.5px solid #c7d2fe;
+            text-align: center;
+            font-size: 1rem;
+        }
+        .result-box strong {
+            color: #2563eb;
+        }
+        .result-box .threshold {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #16a34a;
+            display: block;
+            margin: 4px 0;
+        }
+        .info {
+            margin-top: 12px;
+            font-size: 0.78rem;
+            color: #888;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            .panels { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Comparador de Tarifas: PVPC vs Tarifa Libre</h1>
+        <p class="subtitle">Compara el coste anual total en función del consumo y encuentra el punto de corte</p>
+
+        <div class="panels">
+            <div class="panel panel-pvpc">
+                <h2>PVPC (Regulada)</h2>
+                <div class="field">
+                    <label>Potencia P1 - Punta (€/kW/día)</label>
+                    <input type="number" id="pvpc_pot_p1" value="0.0738" step="0.0001" min="0">
+                </div>
+                <div class="field">
+                    <label>Potencia P2 - Valle (€/kW/día)</label>
+                    <input type="number" id="pvpc_pot_p2" value="0.0019" step="0.0001" min="0">
+                </div>
+                <div class="field">
+                    <label>Precio energía medio (€/kWh)</label>
+                    <input type="number" id="pvpc_energia" value="0.1500" step="0.0001" min="0">
+                </div>
+            </div>
+
+            <div class="panel panel-libre">
+                <h2>Endesa Conecta (Libre)</h2>
+                <div class="field">
+                    <label>Potencia P1 - Punta (€/kW/día)</label>
+                    <input type="number" id="libre_pot_p1" value="0.1100" step="0.0001" min="0">
+                </div>
+                <div class="field">
+                    <label>Potencia P2 - Valle (€/kW/día)</label>
+                    <input type="number" id="libre_pot_p2" value="0.0400" step="0.0001" min="0">
+                </div>
+                <div class="field">
+                    <label>Precio energía (€/kWh)</label>
+                    <input type="number" id="libre_energia" value="0.1200" step="0.0001" min="0">
+                </div>
+            </div>
+
+            <div class="panel panel-comun">
+                <h2>Parámetros comunes</h2>
+                <div class="field">
+                    <label>Potencia contratada P1 (kW)</label>
+                    <input type="number" id="potencia_p1" value="4.6" step="0.1" min="0">
+                </div>
+                <div class="field">
+                    <label>Potencia contratada P2 (kW)</label>
+                    <input type="number" id="potencia_p2" value="4.6" step="0.1" min="0">
+                </div>
+                <div class="field">
+                    <label>Consumo máximo eje X (kWh/año)</label>
+                    <input type="number" id="max_consumo" value="6000" step="100" min="100">
+                </div>
+                <div class="field">
+                    <label>IVA (%)</label>
+                    <input type="number" id="iva" value="21" step="1" min="0">
+                </div>
+                <div class="field">
+                    <label>Impuesto eléctrico (%)</label>
+                    <input type="number" id="imp_electrico" value="5.11" step="0.01" min="0">
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-container">
+            <canvas id="chart"></canvas>
+            <div class="result-box" id="result"></div>
+            <p class="info">
+                Fórmula: Coste anual = (Pot_P1 × kW_P1 + Pot_P2 × kW_P2) × 365 + Precio_energía × Consumo_anual.
+                Impuestos aplicados sobre el total. Valores editables — ajusta según tu factura real.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        const ctx = document.getElementById('chart').getContext('2d');
+        let chart;
+
+        function getVal(id) {
+            return parseFloat(document.getElementById(id).value) || 0;
+        }
+
+        function calcAnualCost(potP1, potP2, kwP1, kwP2, precioEnergia, consumo, impElec, iva) {
+            const costePotencia = (potP1 * kwP1 + potP2 * kwP2) * 365;
+            const costeEnergia = precioEnergia * consumo;
+            const subtotal = costePotencia + costeEnergia;
+            const conImpElec = subtotal * (1 + impElec / 100);
+            return conImpElec * (1 + iva / 100);
+        }
+
+        function update() {
+            const pvpcPotP1 = getVal('pvpc_pot_p1');
+            const pvpcPotP2 = getVal('pvpc_pot_p2');
+            const pvpcEnergia = getVal('pvpc_energia');
+
+            const librePotP1 = getVal('libre_pot_p1');
+            const librePotP2 = getVal('libre_pot_p2');
+            const libreEnergia = getVal('libre_energia');
+
+            const kwP1 = getVal('potencia_p1');
+            const kwP2 = getVal('potencia_p2');
+            const maxConsumo = getVal('max_consumo');
+            const iva = getVal('iva');
+            const impElec = getVal('imp_electrico');
+
+            const steps = 100;
+            const labels = [];
+            const pvpcData = [];
+            const libreData = [];
+
+            for (let i = 0; i <= steps; i++) {
+                const consumo = (maxConsumo / steps) * i;
+                labels.push(Math.round(consumo));
+                pvpcData.push(calcAnualCost(pvpcPotP1, pvpcPotP2, kwP1, kwP2, pvpcEnergia, consumo, impElec, iva));
+                libreData.push(calcAnualCost(librePotP1, librePotP2, kwP1, kwP2, libreEnergia, consumo, impElec, iva));
+            }
+
+            // Calculate intersection
+            const fixedPVPC = (pvpcPotP1 * kwP1 + pvpcPotP2 * kwP2) * 365;
+            const fixedLibre = (librePotP1 * kwP1 + librePotP2 * kwP2) * 365;
+            const diffFixed = fixedLibre - fixedPVPC;
+            const diffEnergia = pvpcEnergia - libreEnergia;
+
+            let intersectionX = null;
+            let intersectionY = null;
+            let resultHTML = '';
+
+            if (diffEnergia > 0 && diffFixed > 0) {
+                intersectionX = diffFixed / diffEnergia;
+                intersectionY = calcAnualCost(pvpcPotP1, pvpcPotP2, kwP1, kwP2, pvpcEnergia, intersectionX, impElec, iva);
+                resultHTML = `
+                    Con <strong>${kwP1} kW</strong> de potencia contratada, el umbral de consumo es:
+                    <span class="threshold">${Math.round(intersectionX).toLocaleString('es-ES')} kWh/año (${(intersectionX/12).toFixed(0)} kWh/mes)</span>
+                    Por debajo de este consumo, <strong style="color:#2563eb">PVPC</strong> es más barata.
+                    Por encima, <strong style="color:#dc2626">Endesa Conecta</strong> es más barata.
+                    <br>Coste en el punto de corte: <strong>${intersectionY.toFixed(2)} €/año</strong>
+                `;
+            } else if (diffEnergia <= 0) {
+                resultHTML = `<strong style="color:#2563eb">PVPC</strong> es más barata en todos los niveles de consumo (menor potencia Y menor energía).`;
+            } else {
+                resultHTML = `<strong style="color:#dc2626">La tarifa libre</strong> es más barata en todos los niveles de consumo.`;
+            }
+
+            document.getElementById('result').innerHTML = resultHTML;
+
+            // Intersection point dataset
+            const intersectionDataset = intersectionX !== null && intersectionX >= 0 && intersectionX <= maxConsumo ? {
+                label: 'Punto de corte',
+                data: [{x: Math.round(intersectionX), y: intersectionY}],
+                backgroundColor: '#16a34a',
+                borderColor: '#16a34a',
+                pointRadius: 8,
+                pointHoverRadius: 10,
+                showLine: false,
+                type: 'scatter'
+            } : null;
+
+            const datasets = [
+                {
+                    label: 'PVPC',
+                    data: pvpcData,
+                    borderColor: '#2563eb',
+                    backgroundColor: 'rgba(37, 99, 235, 0.08)',
+                    borderWidth: 2.5,
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
+                },
+                {
+                    label: 'Endesa Conecta',
+                    data: libreData,
+                    borderColor: '#dc2626',
+                    backgroundColor: 'rgba(220, 38, 38, 0.08)',
+                    borderWidth: 2.5,
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 4
+                }
+            ];
+
+            if (intersectionDataset) datasets.push(intersectionDataset);
+
+            if (chart) chart.destroy();
+
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: { labels, datasets },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { usePointStyle: true, padding: 16 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: (items) => `Consumo: ${items[0].label} kWh/año`,
+                                label: (item) => {
+                                    if (item.dataset.label === 'Punto de corte') {
+                                        return `Umbral: ${item.raw.x.toLocaleString('es-ES')} kWh → ${item.raw.y.toFixed(2)} €`;
+                                    }
+                                    return `${item.dataset.label}: ${item.raw.toFixed(2)} €/año`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Consumo anual (kWh)',
+                                font: { size: 13, weight: 'bold' }
+                            },
+                            ticks: {
+                                callback: (val, i) => {
+                                    const v = labels[i];
+                                    return v % Math.max(500, Math.round(maxConsumo / 10 / 500) * 500) === 0 ? v.toLocaleString('es-ES') : '';
+                                }
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Coste anual (€)',
+                                font: { size: 13, weight: 'bold' }
+                            },
+                            ticks: {
+                                callback: (val) => val.toFixed(0) + ' €'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Listen to all inputs
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', update);
+        });
+
+        // Initial render
+        update();
+    </script>
+</body>
+</html>
