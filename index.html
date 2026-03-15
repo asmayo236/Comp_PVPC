@@ -3,125 +3,285 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Comparador PVPC vs Tarifa Libre</title>
+    <title>¿Me combiene el PVPC?</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23facc15'/><stop offset='100%25' stop-color='%23f59e0b'/></linearGradient></defs><circle cx='50' cy='50' r='48' fill='%231e293b'/><polygon points='55,10 25,55 45,55 40,90 75,42 52,42' fill='url(%23g)'/></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
     <style>
+        :root {
+            --pvpc: #3b82f6;
+            --pvpc-light: #dbeafe;
+            --libre: #f43f5e;
+            --libre-light: #ffe4e6;
+            --green: #10b981;
+            --green-light: #d1fae5;
+            --purple: #8b5cf6;
+            --purple-light: #ede9fe;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --radius: 16px;
+            --shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 16px rgba(0,0,0,0.06);
+        }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f0f2f5;
-            color: #1a1a2e;
-            padding: 20px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            padding: 24px 16px;
+            min-height: 100vh;
         }
-        h1 {
+
+        /* Header */
+        .header {
             text-align: center;
+            margin-bottom: 32px;
+        }
+        .header-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #fef3c7, #fde68a);
+            border-radius: 16px;
+            margin-bottom: 16px;
+            font-size: 28px;
+        }
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--pvpc), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
             margin-bottom: 8px;
-            font-size: 1.6rem;
-            color: #1a1a2e;
         }
-        .subtitle {
-            text-align: center;
-            color: #666;
-            margin-bottom: 24px;
-            font-size: 0.9rem;
-        }
-        .container {
-            max-width: 1100px;
+        .header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            max-width: 520px;
             margin: 0 auto;
+            line-height: 1.5;
         }
+
+        .container { max-width: 1160px; margin: 0 auto; }
+
+        /* Tax toggle */
+        .toggle-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .toggle-label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .toggle-label.active { color: var(--text); }
+        .toggle-switch {
+            position: relative;
+            width: 52px;
+            height: 28px;
+            cursor: pointer;
+        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
+        .toggle-track {
+            position: absolute;
+            inset: 0;
+            background: var(--pvpc);
+            border-radius: 14px;
+            transition: background 0.3s;
+        }
+        .toggle-switch input:checked + .toggle-track { background: var(--purple); }
+        .toggle-knob {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 22px;
+            height: 22px;
+            background: #fff;
+            border-radius: 50%;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+        .toggle-switch input:checked ~ .toggle-knob { transform: translateX(24px); }
+
+        /* Panels */
         .panels {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 16px;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
         }
         .panel {
-            background: #fff;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
         }
-        .panel h2 {
-            font-size: 1rem;
-            margin-bottom: 14px;
-            padding-bottom: 8px;
-            border-bottom: 3px solid;
+        .panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.1);
         }
-        .panel-pvpc h2 { border-color: #2563eb; color: #2563eb; }
-        .panel-libre h2 { border-color: #dc2626; color: #dc2626; }
-        .panel-comun h2 { border-color: #7c3aed; color: #7c3aed; }
-        .field {
-            margin-bottom: 12px;
+        .panel-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border);
         }
+        .panel-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .panel-pvpc .panel-dot { background: var(--pvpc); }
+        .panel-libre .panel-dot { background: var(--libre); }
+        .panel-comun .panel-dot { background: var(--purple); }
+        .panel-header h2 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+        .panel-pvpc .panel-header h2 { color: var(--pvpc); }
+        .panel-libre .panel-header h2 { color: var(--libre); }
+        .panel-comun .panel-header h2 { color: var(--purple); }
+
+        .field { margin-bottom: 14px; }
+        .field:last-child { margin-bottom: 0; }
         .field label {
             display: block;
-            font-size: 0.8rem;
-            color: #555;
-            margin-bottom: 3px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 5px;
+            letter-spacing: 0.01em;
         }
         .field input {
             width: 100%;
-            padding: 8px 10px;
-            border: 1.5px solid #ddd;
-            border-radius: 6px;
-            font-size: 0.95rem;
-            transition: border-color 0.2s;
+            padding: 10px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-family: inherit;
+            font-weight: 500;
+            color: var(--text);
+            background: var(--bg);
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
         .field input:focus {
             outline: none;
-            border-color: #2563eb;
+            border-color: var(--pvpc);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
         }
-        .chart-container {
-            background: #fff;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        .panel-libre .field input:focus {
+            border-color: var(--libre);
+            box-shadow: 0 0 0 3px rgba(244, 63, 94, 0.12);
+        }
+        .panel-comun .field input:focus {
+            border-color: var(--purple);
+            box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+        }
+        .tax-fields { display: none; }
+        .tax-fields.visible { display: block; }
+
+        /* Chart */
+        .chart-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 28px;
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+        .chart-wrapper {
             position: relative;
+            height: 420px;
         }
+
+        /* Result */
         .result-box {
-            margin-top: 16px;
-            padding: 16px 20px;
-            border-radius: 10px;
-            background: linear-gradient(135deg, #eef2ff, #f0fdf4);
-            border: 1.5px solid #c7d2fe;
+            margin-top: 24px;
+            padding: 20px 24px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--green-light), #ecfdf5);
+            border: 1.5px solid #a7f3d0;
             text-align: center;
-            font-size: 1rem;
-        }
-        .result-box strong {
-            color: #2563eb;
+            font-size: 0.95rem;
+            line-height: 1.6;
         }
         .result-box .threshold {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: #16a34a;
+            font-size: 1.6rem;
+            font-weight: 800;
+            color: var(--green);
             display: block;
-            margin: 4px 0;
+            margin: 6px 0;
+            letter-spacing: -0.02em;
         }
-        .info {
-            margin-top: 12px;
-            font-size: 0.78rem;
-            color: #888;
+        .result-box .detail {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        .footer {
+            margin-top: 20px;
             text-align: center;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            line-height: 1.6;
         }
-        @media (max-width: 768px) {
+
+        @media (max-width: 850px) {
             .panels { grid-template-columns: 1fr; }
+            .header h1 { font-size: 1.5rem; }
+            .chart-wrapper { height: 320px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Comparador de Tarifas: PVPC vs Tarifa Libre</h1>
-        <p class="subtitle">Compara el coste anual total en función del consumo y encuentra el punto de corte</p>
+        <div class="header">
+            <div class="header-icon">&#9889;</div>
+            <h1>¿Me combiene el PVPC?</h1>
+            <p>Compara el coste anual de la tarifa regulada PVPC frente a una tarifa del mercado libre y descubre a partir de qué consumo te compensa cada una.</p>
+        </div>
+
+        <div class="toggle-bar">
+            <span class="toggle-label" id="lbl-sin">Sin impuestos</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-tax" checked>
+                <span class="toggle-track"></span>
+                <span class="toggle-knob"></span>
+            </label>
+            <span class="toggle-label active" id="lbl-con">Con impuestos</span>
+        </div>
 
         <div class="panels">
             <div class="panel panel-pvpc">
-                <h2>PVPC (Regulada)</h2>
+                <div class="panel-header">
+                    <span class="panel-dot"></span>
+                    <h2>PVPC (Regulada)</h2>
+                </div>
                 <div class="field">
-                    <label>Potencia P1 - Punta (€/kW/día)</label>
+                    <label>Potencia P1 &mdash; Punta (€/kW/día)</label>
                     <input type="number" id="pvpc_pot_p1" value="0.0738" step="0.0001" min="0">
                 </div>
                 <div class="field">
-                    <label>Potencia P2 - Valle (€/kW/día)</label>
+                    <label>Potencia P2 &mdash; Valle (€/kW/día)</label>
                     <input type="number" id="pvpc_pot_p2" value="0.0019" step="0.0001" min="0">
                 </div>
                 <div class="field">
@@ -131,13 +291,16 @@
             </div>
 
             <div class="panel panel-libre">
-                <h2>Endesa Conecta (Libre)</h2>
+                <div class="panel-header">
+                    <span class="panel-dot"></span>
+                    <h2>Tarifa Mercado Libre</h2>
+                </div>
                 <div class="field">
-                    <label>Potencia P1 - Punta (€/kW/día)</label>
+                    <label>Potencia P1 &mdash; Punta (€/kW/día)</label>
                     <input type="number" id="libre_pot_p1" value="0.1100" step="0.0001" min="0">
                 </div>
                 <div class="field">
-                    <label>Potencia P2 - Valle (€/kW/día)</label>
+                    <label>Potencia P2 &mdash; Valle (€/kW/día)</label>
                     <input type="number" id="libre_pot_p2" value="0.0400" step="0.0001" min="0">
                 </div>
                 <div class="field">
@@ -147,7 +310,10 @@
             </div>
 
             <div class="panel panel-comun">
-                <h2>Parámetros comunes</h2>
+                <div class="panel-header">
+                    <span class="panel-dot"></span>
+                    <h2>Parámetros comunes</h2>
+                </div>
                 <div class="field">
                     <label>Potencia contratada P1 (kW)</label>
                     <input type="number" id="potencia_p1" value="4.6" step="0.1" min="0">
@@ -160,28 +326,35 @@
                     <label>Consumo máximo eje X (kWh/año)</label>
                     <input type="number" id="max_consumo" value="6000" step="100" min="100">
                 </div>
-                <div class="field">
-                    <label>IVA (%)</label>
-                    <input type="number" id="iva" value="21" step="1" min="0">
-                </div>
-                <div class="field">
-                    <label>Impuesto eléctrico (%)</label>
-                    <input type="number" id="imp_electrico" value="5.11" step="0.01" min="0">
+                <div class="tax-fields visible" id="tax-fields">
+                    <div class="field">
+                        <label>IVA (%)</label>
+                        <input type="number" id="iva" value="21" step="1" min="0">
+                    </div>
+                    <div class="field">
+                        <label>Impuesto eléctrico (%)</label>
+                        <input type="number" id="imp_electrico" value="5.11" step="0.01" min="0">
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="chart-container">
-            <canvas id="chart"></canvas>
+        <div class="chart-card">
+            <div class="chart-wrapper">
+                <canvas id="chart"></canvas>
+            </div>
             <div class="result-box" id="result"></div>
-            <p class="info">
-                Fórmula: Coste anual = (Pot_P1 × kW_P1 + Pot_P2 × kW_P2) × 365 + Precio_energía × Consumo_anual.
-                Impuestos aplicados sobre el total. Valores editables — ajusta según tu factura real.
-            </p>
+        </div>
+
+        <div class="footer">
+            Fórmula: Coste anual = (Pot_P1 × kW_P1 + Pot_P2 × kW_P2) × 365 + Precio_energía × Consumo_anual.<br>
+            Valores editables &mdash; ajusta según tu factura real. Consumo medio hogar español: ~3.500 kWh/año (IDAE).
         </div>
     </div>
 
     <script>
+        const CONSUMO_MEDIO_HOGAR = 3500; // kWh/año según IDAE
+
         const ctx = document.getElementById('chart').getContext('2d');
         let chart;
 
@@ -189,30 +362,33 @@
             return parseFloat(document.getElementById(id).value) || 0;
         }
 
-        function calcAnualCost(potP1, potP2, kwP1, kwP2, precioEnergia, consumo, impElec, iva) {
+        function useTax() {
+            return document.getElementById('toggle-tax').checked;
+        }
+
+        function calcCost(potP1, potP2, kwP1, kwP2, precioEnergia, consumo, impElec, iva, withTax) {
             const costePotencia = (potP1 * kwP1 + potP2 * kwP2) * 365;
             const costeEnergia = precioEnergia * consumo;
             const subtotal = costePotencia + costeEnergia;
-            const conImpElec = subtotal * (1 + impElec / 100);
-            return conImpElec * (1 + iva / 100);
+            if (!withTax) return subtotal;
+            return subtotal * (1 + impElec / 100) * (1 + iva / 100);
         }
 
         function update() {
             const pvpcPotP1 = getVal('pvpc_pot_p1');
             const pvpcPotP2 = getVal('pvpc_pot_p2');
             const pvpcEnergia = getVal('pvpc_energia');
-
             const librePotP1 = getVal('libre_pot_p1');
             const librePotP2 = getVal('libre_pot_p2');
             const libreEnergia = getVal('libre_energia');
-
             const kwP1 = getVal('potencia_p1');
             const kwP2 = getVal('potencia_p2');
             const maxConsumo = getVal('max_consumo');
             const iva = getVal('iva');
             const impElec = getVal('imp_electrico');
+            const withTax = useTax();
 
-            const steps = 100;
+            const steps = 200;
             const labels = [];
             const pvpcData = [];
             const libreData = [];
@@ -220,76 +396,140 @@
             for (let i = 0; i <= steps; i++) {
                 const consumo = (maxConsumo / steps) * i;
                 labels.push(Math.round(consumo));
-                pvpcData.push(calcAnualCost(pvpcPotP1, pvpcPotP2, kwP1, kwP2, pvpcEnergia, consumo, impElec, iva));
-                libreData.push(calcAnualCost(librePotP1, librePotP2, kwP1, kwP2, libreEnergia, consumo, impElec, iva));
+                pvpcData.push(calcCost(pvpcPotP1, pvpcPotP2, kwP1, kwP2, pvpcEnergia, consumo, impElec, iva, withTax));
+                libreData.push(calcCost(librePotP1, librePotP2, kwP1, kwP2, libreEnergia, consumo, impElec, iva, withTax));
             }
 
-            // Calculate intersection
+            // Intersection (independent of taxes since tax is a linear multiplier)
             const fixedPVPC = (pvpcPotP1 * kwP1 + pvpcPotP2 * kwP2) * 365;
             const fixedLibre = (librePotP1 * kwP1 + librePotP2 * kwP2) * 365;
             const diffFixed = fixedLibre - fixedPVPC;
             const diffEnergia = pvpcEnergia - libreEnergia;
 
-            let intersectionX = null;
-            let intersectionY = null;
+            let ix = null, iy = null;
             let resultHTML = '';
 
             if (diffEnergia > 0 && diffFixed > 0) {
-                intersectionX = diffFixed / diffEnergia;
-                intersectionY = calcAnualCost(pvpcPotP1, pvpcPotP2, kwP1, kwP2, pvpcEnergia, intersectionX, impElec, iva);
+                ix = diffFixed / diffEnergia;
+                iy = calcCost(pvpcPotP1, pvpcPotP2, kwP1, kwP2, pvpcEnergia, ix, impElec, iva, withTax);
+                const taxLabel = withTax ? ' (impuestos incluidos)' : ' (sin impuestos)';
                 resultHTML = `
-                    Con <strong>${kwP1} kW</strong> de potencia contratada, el umbral de consumo es:
-                    <span class="threshold">${Math.round(intersectionX).toLocaleString('es-ES')} kWh/año (${(intersectionX/12).toFixed(0)} kWh/mes)</span>
-                    Por debajo de este consumo, <strong style="color:#2563eb">PVPC</strong> es más barata.
-                    Por encima, <strong style="color:#dc2626">Endesa Conecta</strong> es más barata.
-                    <br>Coste en el punto de corte: <strong>${intersectionY.toFixed(2)} €/año</strong>
+                    Con <strong>${kwP1} kW</strong> contratados, el umbral de rentabilidad es:
+                    <span class="threshold">${Math.round(ix).toLocaleString('es-ES')} kWh/año&ensp;(${(ix / 12).toFixed(0)} kWh/mes)</span>
+                    Por debajo &rarr; <strong style="color:var(--pvpc)">PVPC</strong> es más barata.
+                    Por encima &rarr; <strong style="color:var(--libre)">Tarifa Mercado Libre</strong> es más barata.
+                    <div class="detail">Coste en el punto de corte: <strong>${iy.toFixed(2)} €/año</strong>${taxLabel}</div>
                 `;
             } else if (diffEnergia <= 0) {
-                resultHTML = `<strong style="color:#2563eb">PVPC</strong> es más barata en todos los niveles de consumo (menor potencia Y menor energía).`;
+                resultHTML = `<strong style="color:var(--pvpc)">PVPC</strong> es más barata en todos los niveles de consumo con estos precios.`;
             } else {
-                resultHTML = `<strong style="color:#dc2626">La tarifa libre</strong> es más barata en todos los niveles de consumo.`;
+                resultHTML = `<strong style="color:var(--libre)">La tarifa del mercado libre</strong> es más barata en todos los niveles de consumo con estos precios.`;
             }
-
             document.getElementById('result').innerHTML = resultHTML;
 
-            // Intersection point dataset
-            const intersectionDataset = intersectionX !== null && intersectionX >= 0 && intersectionX <= maxConsumo ? {
-                label: 'Punto de corte',
-                data: [{x: Math.round(intersectionX), y: intersectionY}],
-                backgroundColor: '#16a34a',
-                borderColor: '#16a34a',
-                pointRadius: 8,
-                pointHoverRadius: 10,
-                showLine: false,
-                type: 'scatter'
-            } : null;
+            // Annotations: dashed lines for intersection + avg consumption
+            const annotations = {};
+
+            // Average household consumption vertical line
+            if (CONSUMO_MEDIO_HOGAR <= maxConsumo) {
+                annotations.avgLine = {
+                    type: 'line',
+                    xMin: CONSUMO_MEDIO_HOGAR,
+                    xMax: CONSUMO_MEDIO_HOGAR,
+                    borderColor: '#94a3b8',
+                    borderWidth: 1.5,
+                    borderDash: [6, 4],
+                    label: {
+                        display: true,
+                        content: 'Hogar medio (~3.500 kWh)',
+                        position: 'start',
+                        backgroundColor: 'rgba(148,163,184,0.9)',
+                        color: '#fff',
+                        font: { size: 11, weight: '600', family: 'Inter' },
+                        padding: { x: 8, y: 4 },
+                        borderRadius: 6
+                    }
+                };
+            }
+
+            // Intersection dashed lines + point
+            if (ix !== null && ix >= 0 && ix <= maxConsumo) {
+                annotations.crossLineV = {
+                    type: 'line',
+                    xMin: ix,
+                    xMax: ix,
+                    yMin: 0,
+                    yMax: iy,
+                    borderColor: 'rgba(16, 185, 129, 0.5)',
+                    borderWidth: 2,
+                    borderDash: [6, 4]
+                };
+                annotations.crossLineH = {
+                    type: 'line',
+                    xMin: 0,
+                    xMax: ix,
+                    yMin: iy,
+                    yMax: iy,
+                    borderColor: 'rgba(16, 185, 129, 0.5)',
+                    borderWidth: 2,
+                    borderDash: [6, 4]
+                };
+                annotations.crossPoint = {
+                    type: 'point',
+                    xValue: ix,
+                    yValue: iy,
+                    radius: 7,
+                    backgroundColor: 'var(--green)',
+                    borderColor: '#fff',
+                    borderWidth: 2.5,
+                    shadowOffsetX: 0,
+                    shadowOffsetY: 2,
+                    shadowBlur: 6,
+                    shadowColor: 'rgba(16,185,129,0.35)'
+                };
+                annotations.crossLabel = {
+                    type: 'label',
+                    xValue: ix,
+                    yValue: iy,
+                    xAdjust: 0,
+                    yAdjust: -22,
+                    content: `${Math.round(ix).toLocaleString('es-ES')} kWh · ${iy.toFixed(0)} €`,
+                    color: '#065f46',
+                    backgroundColor: 'rgba(209, 250, 229, 0.95)',
+                    borderColor: '#a7f3d0',
+                    borderWidth: 1,
+                    borderRadius: 6,
+                    font: { size: 11, weight: '700', family: 'Inter' },
+                    padding: { x: 8, y: 4 }
+                };
+            }
 
             const datasets = [
                 {
-                    label: 'PVPC',
+                    label: 'PVPC (Regulada)',
                     data: pvpcData,
-                    borderColor: '#2563eb',
-                    backgroundColor: 'rgba(37, 99, 235, 0.08)',
-                    borderWidth: 2.5,
+                    borderColor: 'var(--pvpc)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.06)',
+                    borderWidth: 3,
                     fill: false,
                     tension: 0,
                     pointRadius: 0,
-                    pointHoverRadius: 4
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: 'var(--pvpc)'
                 },
                 {
-                    label: 'Endesa Conecta',
+                    label: 'Tarifa Mercado Libre',
                     data: libreData,
-                    borderColor: '#dc2626',
-                    backgroundColor: 'rgba(220, 38, 38, 0.08)',
-                    borderWidth: 2.5,
+                    borderColor: 'var(--libre)',
+                    backgroundColor: 'rgba(244, 63, 94, 0.06)',
+                    borderWidth: 3,
                     fill: false,
                     tension: 0,
                     pointRadius: 0,
-                    pointHoverRadius: 4
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: 'var(--libre)'
                 }
             ];
-
-            if (intersectionDataset) datasets.push(intersectionDataset);
 
             if (chart) chart.destroy();
 
@@ -298,58 +538,89 @@
                 data: { labels, datasets },
                 options: {
                     responsive: true,
-                    interaction: {
-                        mode: 'index',
-                        intersect: false
-                    },
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
                     plugins: {
                         legend: {
                             position: 'top',
-                            labels: { usePointStyle: true, padding: 16 }
+                            labels: {
+                                usePointStyle: true,
+                                pointStyle: 'circle',
+                                padding: 20,
+                                font: { size: 13, weight: '600', family: 'Inter' }
+                            }
                         },
                         tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                            titleFont: { size: 13, weight: '700', family: 'Inter' },
+                            bodyFont: { size: 12, family: 'Inter' },
+                            padding: 12,
+                            cornerRadius: 10,
                             callbacks: {
-                                title: (items) => `Consumo: ${items[0].label} kWh/año`,
-                                label: (item) => {
-                                    if (item.dataset.label === 'Punto de corte') {
-                                        return `Umbral: ${item.raw.x.toLocaleString('es-ES')} kWh → ${item.raw.y.toFixed(2)} €`;
-                                    }
-                                    return `${item.dataset.label}: ${item.raw.toFixed(2)} €/año`;
-                                }
+                                title: (items) => `Consumo: ${Number(items[0].label).toLocaleString('es-ES')} kWh/año`,
+                                label: (item) => ` ${item.dataset.label}: ${item.raw.toFixed(2)} €/año`
                             }
-                        }
+                        },
+                        annotation: { annotations }
                     },
                     scales: {
                         x: {
                             title: {
                                 display: true,
                                 text: 'Consumo anual (kWh)',
-                                font: { size: 13, weight: 'bold' }
+                                font: { size: 13, weight: '700', family: 'Inter' },
+                                color: '#334155'
                             },
                             ticks: {
+                                font: { size: 11, family: 'Inter' },
+                                color: '#94a3b8',
                                 callback: (val, i) => {
                                     const v = labels[i];
-                                    return v % Math.max(500, Math.round(maxConsumo / 10 / 500) * 500) === 0 ? v.toLocaleString('es-ES') : '';
+                                    const step = Math.max(500, Math.round(maxConsumo / 8 / 500) * 500);
+                                    return v % step === 0 ? v.toLocaleString('es-ES') : '';
                                 }
-                            }
+                            },
+                            grid: { color: 'rgba(226, 232, 240, 0.6)' }
                         },
                         y: {
                             title: {
                                 display: true,
-                                text: 'Coste anual (€)',
-                                font: { size: 13, weight: 'bold' }
+                                text: withTax ? 'Coste anual con impuestos (€)' : 'Coste anual sin impuestos (€)',
+                                font: { size: 13, weight: '700', family: 'Inter' },
+                                color: '#334155'
                             },
                             ticks: {
+                                font: { size: 11, family: 'Inter' },
+                                color: '#94a3b8',
                                 callback: (val) => val.toFixed(0) + ' €'
-                            }
+                            },
+                            grid: { color: 'rgba(226, 232, 240, 0.6)' },
+                            beginAtZero: true
                         }
                     }
                 }
             });
         }
 
+        // Tax toggle
+        const toggleTax = document.getElementById('toggle-tax');
+        const lblSin = document.getElementById('lbl-sin');
+        const lblCon = document.getElementById('lbl-con');
+        const taxFields = document.getElementById('tax-fields');
+
+        function syncToggle() {
+            const on = toggleTax.checked;
+            lblCon.classList.toggle('active', on);
+            lblSin.classList.toggle('active', !on);
+            taxFields.classList.toggle('visible', on);
+            update();
+        }
+        toggleTax.addEventListener('change', syncToggle);
+        lblSin.addEventListener('click', () => { toggleTax.checked = false; syncToggle(); });
+        lblCon.addEventListener('click', () => { toggleTax.checked = true; syncToggle(); });
+
         // Listen to all inputs
-        document.querySelectorAll('input').forEach(input => {
+        document.querySelectorAll('input[type="number"]').forEach(input => {
             input.addEventListener('input', update);
         });
 
