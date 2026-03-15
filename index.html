@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>¿Me combiene el PVPC?</title>
+    <title>¿Me conviene el PVPC?</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23facc15'/><stop offset='100%25' stop-color='%23f59e0b'/></linearGradient></defs><circle cx='50' cy='50' r='48' fill='%231e293b'/><polygon points='55,10 25,55 45,55 40,90 75,42 52,42' fill='url(%23g)'/></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -256,18 +256,8 @@
     <div class="container">
         <div class="header">
             <div class="header-icon">&#9889;</div>
-            <h1>¿Me combiene el PVPC?</h1>
+            <h1>¿Me conviene el PVPC?</h1>
             <p>Compara el coste anual de la tarifa regulada PVPC frente a una tarifa del mercado libre y descubre a partir de qué consumo te compensa cada una.</p>
-        </div>
-
-        <div class="toggle-bar">
-            <span class="toggle-label" id="lbl-sin">Sin impuestos</span>
-            <label class="toggle-switch">
-                <input type="checkbox" id="toggle-tax" checked>
-                <span class="toggle-track"></span>
-                <span class="toggle-knob"></span>
-            </label>
-            <span class="toggle-label active" id="lbl-con">Con impuestos</span>
         </div>
 
         <div class="panels">
@@ -312,7 +302,7 @@
             <div class="panel panel-comun">
                 <div class="panel-header">
                     <span class="panel-dot"></span>
-                    <h2>Parámetros comunes</h2>
+                    <h2>Mi consumo e impuestos</h2>
                 </div>
                 <div class="field">
                     <label>Potencia contratada P1 (kW)</label>
@@ -337,6 +327,16 @@
                     </div>
                 </div>
             </div>
+        </div>
+
+        <div class="toggle-bar">
+            <span class="toggle-label" id="lbl-sin">Sin impuestos</span>
+            <label class="toggle-switch">
+                <input type="checkbox" id="toggle-tax" checked>
+                <span class="toggle-track"></span>
+                <span class="toggle-knob"></span>
+            </label>
+            <span class="toggle-label active" id="lbl-con">Con impuestos</span>
         </div>
 
         <div class="chart-card">
@@ -389,15 +389,13 @@
             const withTax = useTax();
 
             const steps = 200;
-            const labels = [];
             const pvpcData = [];
             const libreData = [];
 
             for (let i = 0; i <= steps; i++) {
                 const consumo = (maxConsumo / steps) * i;
-                labels.push(Math.round(consumo));
-                pvpcData.push(calcCost(pvpcPotP1, pvpcPotP2, kwP1, kwP2, pvpcEnergia, consumo, impElec, iva, withTax));
-                libreData.push(calcCost(librePotP1, librePotP2, kwP1, kwP2, libreEnergia, consumo, impElec, iva, withTax));
+                pvpcData.push({ x: consumo, y: calcCost(pvpcPotP1, pvpcPotP2, kwP1, kwP2, pvpcEnergia, consumo, impElec, iva, withTax) });
+                libreData.push({ x: consumo, y: calcCost(librePotP1, librePotP2, kwP1, kwP2, libreEnergia, consumo, impElec, iva, withTax) });
             }
 
             // Intersection (independent of taxes since tax is a linear multiplier)
@@ -479,7 +477,7 @@
                     xValue: ix,
                     yValue: iy,
                     radius: 7,
-                    backgroundColor: 'var(--green)',
+                    backgroundColor: '#10b981',
                     borderColor: '#fff',
                     borderWidth: 2.5,
                     shadowOffsetX: 0,
@@ -508,26 +506,26 @@
                 {
                     label: 'PVPC (Regulada)',
                     data: pvpcData,
-                    borderColor: 'var(--pvpc)',
+                    borderColor: '#3b82f6',
                     backgroundColor: 'rgba(59, 130, 246, 0.06)',
                     borderWidth: 3,
                     fill: false,
                     tension: 0,
                     pointRadius: 0,
                     pointHoverRadius: 5,
-                    pointHoverBackgroundColor: 'var(--pvpc)'
+                    pointHoverBackgroundColor: '#3b82f6'
                 },
                 {
                     label: 'Tarifa Mercado Libre',
                     data: libreData,
-                    borderColor: 'var(--libre)',
+                    borderColor: '#f43f5e',
                     backgroundColor: 'rgba(244, 63, 94, 0.06)',
                     borderWidth: 3,
                     fill: false,
                     tension: 0,
                     pointRadius: 0,
                     pointHoverRadius: 5,
-                    pointHoverBackgroundColor: 'var(--libre)'
+                    pointHoverBackgroundColor: '#f43f5e'
                 }
             ];
 
@@ -535,11 +533,11 @@
 
             chart = new Chart(ctx, {
                 type: 'line',
-                data: { labels, datasets },
+                data: { datasets },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    interaction: { mode: 'index', intersect: false },
+                    interaction: { mode: 'nearest', intersect: false, axis: 'x' },
                     plugins: {
                         legend: {
                             position: 'top',
@@ -557,14 +555,17 @@
                             padding: 12,
                             cornerRadius: 10,
                             callbacks: {
-                                title: (items) => `Consumo: ${Number(items[0].label).toLocaleString('es-ES')} kWh/año`,
-                                label: (item) => ` ${item.dataset.label}: ${item.raw.toFixed(2)} €/año`
+                                title: (items) => `Consumo: ${Math.round(items[0].parsed.x).toLocaleString('es-ES')} kWh/año`,
+                                label: (item) => ` ${item.dataset.label}: ${item.parsed.y.toFixed(2)} €/año`
                             }
                         },
                         annotation: { annotations }
                     },
                     scales: {
                         x: {
+                            type: 'linear',
+                            min: 0,
+                            max: maxConsumo,
                             title: {
                                 display: true,
                                 text: 'Consumo anual (kWh)',
@@ -574,11 +575,7 @@
                             ticks: {
                                 font: { size: 11, family: 'Inter' },
                                 color: '#94a3b8',
-                                callback: (val, i) => {
-                                    const v = labels[i];
-                                    const step = Math.max(500, Math.round(maxConsumo / 8 / 500) * 500);
-                                    return v % step === 0 ? v.toLocaleString('es-ES') : '';
-                                }
+                                callback: (val) => val.toLocaleString('es-ES')
                             },
                             grid: { color: 'rgba(226, 232, 240, 0.6)' }
                         },
