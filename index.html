@@ -231,6 +231,12 @@
             margin: 6px 0;
             letter-spacing: -0.02em;
         }
+        .result-box .recommendation {
+            font-size: 1.25rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            letter-spacing: -0.01em;
+        }
         .result-box .detail {
             font-size: 0.85rem;
             color: var(--text-secondary);
@@ -314,7 +320,7 @@
                 </div>
                 <div class="field">
                     <label>Tu consumo anual (kWh/año)</label>
-                    <input type="number" id="mi_consumo" value="3500" step="100" min="0">
+                    <input type="number" id="mi_consumo" value="4000" step="100" min="0">
                 </div>
                 <div class="field">
                     <label>Consumo máximo eje X (kWh/año)</label>
@@ -357,10 +363,14 @@
     </div>
 
     <script>
-        // Formato numérico español: 9.999,99
-        function fmtInt(n) { return Math.round(n).toLocaleString('es-ES'); }
+        // Formato numérico español explícito: 9.999,99
+        function fmtInt(n) {
+            return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
         function fmtDec(n, d) {
-            return n.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
+            const parts = n.toFixed(d).split('.');
+            parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+            return d > 0 ? parts[0] + ',' + parts[1] : parts[0];
         }
 
         const ctx = document.getElementById('chart').getContext('2d');
@@ -447,8 +457,8 @@
                 const colorRec = pvpcGana ? '#3b82f6' : '#f43f5e';
                 const mejorCoste = pvpcGana ? miCostePVPC : miCosteLibre;
                 resultHTML = `
-                    Con tu consumo de <strong>${fmtInt(miConsumo)} kWh/año</strong>,
-                    te recomendamos <strong style="color:${colorRec}">${recomendada}</strong>.
+                    <div class="recommendation">Con tu consumo de ${fmtInt(miConsumo)} kWh/año,
+                    te recomendamos <span style="color:${colorRec}">${recomendada}</span>.</div>
                     Pagarías <strong>${fmtDec(mejorCoste, 2)} €/año</strong>
                     y te ahorrarías <strong>${fmtDec(ahorro, 2)} €/año</strong> frente a la otra tarifa${taxLabel}.
                     <div class="detail">
@@ -460,8 +470,8 @@
                 `;
             } else if (diffEnergia <= 0) {
                 resultHTML = `
-                    Con tu consumo de <strong>${fmtInt(miConsumo)} kWh/año</strong>,
-                    te recomendamos <strong style="color:#3b82f6">PVPC</strong>.
+                    <div class="recommendation">Con tu consumo de ${fmtInt(miConsumo)} kWh/año,
+                    te recomendamos <span style="color:#3b82f6">PVPC</span>.</div>
                     Pagarías <strong>${fmtDec(miCostePVPC, 2)} €/año</strong>
                     y te ahorrarías <strong>${fmtDec(ahorro, 2)} €/año</strong> frente a la otra tarifa${taxLabel}.
                     <div class="detail">
@@ -470,8 +480,8 @@
                 `;
             } else {
                 resultHTML = `
-                    Con tu consumo de <strong>${fmtInt(miConsumo)} kWh/año</strong>,
-                    te recomendamos <strong style="color:#f43f5e">Tarifa Mercado Libre</strong>.
+                    <div class="recommendation">Con tu consumo de ${fmtInt(miConsumo)} kWh/año,
+                    te recomendamos <span style="color:#f43f5e">Tarifa Mercado Libre</span>.</div>
                     Pagarías <strong>${fmtDec(miCosteLibre, 2)} €/año</strong>
                     y te ahorrarías <strong>${fmtDec(ahorro, 2)} €/año</strong> frente a la otra tarifa${taxLabel}.
                     <div class="detail">
