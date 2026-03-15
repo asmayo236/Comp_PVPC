@@ -445,36 +445,37 @@
                 const pvpcGana = miConsumo < ix;
                 const recomendada = pvpcGana ? 'PVPC' : 'Tarifa Mercado Libre';
                 const colorRec = pvpcGana ? '#3b82f6' : '#f43f5e';
+                const mejorCoste = pvpcGana ? miCostePVPC : miCosteLibre;
                 resultHTML = `
-                    Con <strong>${fmtDec(kwP1, 1)} kW</strong> contratados, el umbral de rentabilidad es:
-                    <span class="threshold">${fmtInt(ix)} kWh/año&ensp;(${fmtInt(ix / 12)} kWh/mes)</span>
-                    Por debajo &rarr; <strong style="color:#3b82f6">PVPC</strong> es más barata.
-                    Por encima &rarr; <strong style="color:#f43f5e">Tarifa Mercado Libre</strong> es más barata.
+                    Con tu consumo de <strong>${fmtInt(miConsumo)} kWh/año</strong>,
+                    te recomendamos <strong style="color:${colorRec}">${recomendada}</strong>.
+                    Pagarías <strong>${fmtDec(mejorCoste, 2)} €/año</strong>
+                    y te ahorrarías <strong>${fmtDec(ahorro, 2)} €/año</strong> frente a la otra tarifa${taxLabel}.
                     <div class="detail">
-                        Con tu consumo de <strong>${fmtInt(miConsumo)} kWh/año</strong>,
-                        te recomendamos <strong style="color:${colorRec}">${recomendada}</strong>.
-                        Pagarías <strong>${fmtDec(pvpcGana ? miCostePVPC : miCosteLibre, 2)} €/año</strong>
-                        y te ahorrarías <strong>${fmtDec(ahorro, 2)} €/año</strong> frente a la otra tarifa${taxLabel}.
+                        Con <strong>${fmtDec(kwP1, 1)} kW</strong> contratados, el punto de corte está en
+                        <strong>${fmtInt(ix)} kWh/año</strong> (${fmtInt(ix / 12)} kWh/mes).
+                        Por debajo &rarr; <strong style="color:#3b82f6">PVPC</strong> es más barata.
+                        Por encima &rarr; <strong style="color:#f43f5e">Tarifa Mercado Libre</strong> es más barata.
                     </div>
                 `;
             } else if (diffEnergia <= 0) {
                 resultHTML = `
-                    <strong style="color:#3b82f6">PVPC</strong> es más barata en todos los niveles de consumo con estos precios.
+                    Con tu consumo de <strong>${fmtInt(miConsumo)} kWh/año</strong>,
+                    te recomendamos <strong style="color:#3b82f6">PVPC</strong>.
+                    Pagarías <strong>${fmtDec(miCostePVPC, 2)} €/año</strong>
+                    y te ahorrarías <strong>${fmtDec(ahorro, 2)} €/año</strong> frente a la otra tarifa${taxLabel}.
                     <div class="detail">
-                        Con tu consumo de <strong>${fmtInt(miConsumo)} kWh/año</strong>,
-                        pagarías <strong>${fmtDec(miCostePVPC, 2)} €/año</strong> con PVPC
-                        frente a <strong>${fmtDec(miCosteLibre, 2)} €/año</strong> en el mercado libre.
-                        Ahorro: <strong>${fmtDec(ahorro, 2)} €/año</strong>${taxLabel}.
+                        <strong style="color:#3b82f6">PVPC</strong> es más barata en todos los niveles de consumo con estos precios.
                     </div>
                 `;
             } else {
                 resultHTML = `
-                    <strong style="color:#f43f5e">La tarifa del mercado libre</strong> es más barata en todos los niveles de consumo con estos precios.
+                    Con tu consumo de <strong>${fmtInt(miConsumo)} kWh/año</strong>,
+                    te recomendamos <strong style="color:#f43f5e">Tarifa Mercado Libre</strong>.
+                    Pagarías <strong>${fmtDec(miCosteLibre, 2)} €/año</strong>
+                    y te ahorrarías <strong>${fmtDec(ahorro, 2)} €/año</strong> frente a la otra tarifa${taxLabel}.
                     <div class="detail">
-                        Con tu consumo de <strong>${fmtInt(miConsumo)} kWh/año</strong>,
-                        pagarías <strong>${fmtDec(miCosteLibre, 2)} €/año</strong> en el mercado libre
-                        frente a <strong>${fmtDec(miCostePVPC, 2)} €/año</strong> con PVPC.
-                        Ahorro: <strong>${fmtDec(ahorro, 2)} €/año</strong>${taxLabel}.
+                        <strong style="color:#f43f5e">La tarifa del mercado libre</strong> es más barata en todos los niveles de consumo con estos precios.
                     </div>
                 `;
             }
@@ -553,6 +554,28 @@
                         content: `Tu consumo (${fmtInt(miConsumo)} kWh)`,
                         position: 'start',
                         backgroundColor: 'rgba(139,92,246,0.9)',
+                        color: '#fff',
+                        font: { size: 11, weight: '600', family: 'Inter' },
+                        padding: { x: 8, y: 4 },
+                        borderRadius: 6
+                    }
+                };
+            }
+
+            // Average household consumption (3.500 kWh/año, IDAE)
+            const CONSUMO_MEDIO_HOGAR = 3500;
+            if (CONSUMO_MEDIO_HOGAR <= maxConsumo) {
+                annotations.avgLine = {
+                    type: 'line',
+                    xMin: CONSUMO_MEDIO_HOGAR, xMax: CONSUMO_MEDIO_HOGAR,
+                    borderColor: '#94a3b8',
+                    borderWidth: 1.5,
+                    borderDash: [6, 4],
+                    label: {
+                        display: true,
+                        content: `Hogar medio (${fmtInt(CONSUMO_MEDIO_HOGAR)} kWh)`,
+                        position: 'end',
+                        backgroundColor: 'rgba(148,163,184,0.9)',
                         color: '#fff',
                         font: { size: 11, weight: '600', family: 'Inter' },
                         padding: { x: 8, y: 4 },
