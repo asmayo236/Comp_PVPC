@@ -355,6 +355,12 @@
     <script>
         const CONSUMO_MEDIO_HOGAR = 3500; // kWh/año según IDAE
 
+        // Formato numérico español: 9.999,99
+        function fmtInt(n) { return Math.round(n).toLocaleString('es-ES'); }
+        function fmtDec(n, d) {
+            return n.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
+        }
+
         const ctx = document.getElementById('chart').getContext('2d');
         let chart;
 
@@ -374,6 +380,23 @@
             return subtotal * (1 + impElec / 100) * (1 + iva / 100);
         }
 
+        // Split data at intersection: returns points up to (and including) ix, and from ix onward
+        function splitAtX(data, ix, iy) {
+            const before = [], after = [];
+            for (const p of data) {
+                if (p.x <= ix) before.push(p);
+                if (p.x >= ix) after.push(p);
+            }
+            // Ensure the intersection point is included in both
+            if (before.length === 0 || before[before.length - 1].x !== ix) {
+                before.push({ x: ix, y: iy });
+            }
+            if (after.length === 0 || after[0].x !== ix) {
+                after.unshift({ x: ix, y: iy });
+            }
+            return { before, after };
+        }
+
         function update() {
             const pvpcPotP1 = getVal('pvpc_pot_p1');
             const pvpcPotP2 = getVal('pvpc_pot_p2');
@@ -389,46 +412,145 @@
             const withTax = useTax();
 
             const steps = 200;
-            const pvpcData = [];
-            const libreData = [];
+            const pvpcAll = [];
+            const libreAll = [];
 
             for (let i = 0; i <= steps; i++) {
                 const consumo = (maxConsumo / steps) * i;
-                pvpcData.push({ x: consumo, y: calcCost(pvpcPotP1, pvpcPotP2, kwP1, kwP2, pvpcEnergia, consumo, impElec, iva, withTax) });
-                libreData.push({ x: consumo, y: calcCost(librePotP1, librePotP2, kwP1, kwP2, libreEnergia, consumo, impElec, iva, withTax) });
+                pvpcAll.push({ x: consumo, y: calcCost(pvpcPotP1, pvpcPotP2, kwP1, kwP2, pvpcEnergia, consumo, impElec, iva, withTax) });
+                libreAll.push({ x: consumo, y: calcCost(librePotP1, librePotP2, kwP1, kwP2, libreEnergia, consumo, impElec, iva, withTax) });
             }
 
-            // Intersection (independent of taxes since tax is a linear multiplier)
+            // Intersection
             const fixedPVPC = (pvpcPotP1 * kwP1 + pvpcPotP2 * kwP2) * 365;
             const fixedLibre = (librePotP1 * kwP1 + librePotP2 * kwP2) * 365;
             const diffFixed = fixedLibre - fixedPVPC;
             const diffEnergia = pvpcEnergia - libreEnergia;
 
             let ix = null, iy = null;
-            let resultHTML = '';
-
-            if (diffEnergia > 0 && diffFixed > 0) {
+            let hasIntersection = diffEnergia > 0 && diffFixed > 0;
+            if (hasIntersection) {
                 ix = diffFixed / diffEnergia;
                 iy = calcCost(pvpcPotP1, pvpcPotP2, kwP1, kwP2, pvpcEnergia, ix, impElec, iva, withTax);
+                if (ix > maxConsumo) hasIntersection = false;
+            }
+
+            // Result text
+            let resultHTML = '';
+            if (hasIntersection) {
                 const taxLabel = withTax ? ' (impuestos incluidos)' : ' (sin impuestos)';
                 resultHTML = `
-                    Con <strong>${kwP1} kW</strong> contratados, el umbral de rentabilidad es:
-                    <span class="threshold">${Math.round(ix).toLocaleString('es-ES')} kWh/año&ensp;(${(ix / 12).toFixed(0)} kWh/mes)</span>
-                    Por debajo &rarr; <strong style="color:var(--pvpc)">PVPC</strong> es más barata.
-                    Por encima &rarr; <strong style="color:var(--libre)">Tarifa Mercado Libre</strong> es más barata.
-                    <div class="detail">Coste en el punto de corte: <strong>${iy.toFixed(2)} €/año</strong>${taxLabel}</div>
+                    Con <strong>${fmtDec(kwP1, 1)} kW</strong> contratados, el umbral de rentabilidad es:
+                    <span class="threshold">${fmtInt(ix)} kWh/año&ensp;(${fmtInt(ix / 12)} kWh/mes)</span>
+                    Por debajo &rarr; <strong style="color:#3b82f6">PVPC</strong> es más barata.
+                    Por encima &rarr; <strong style="color:#f43f5e">Tarifa Mercado Libre</strong> es más barata.
+                    <div class="detail">Coste en el punto de corte: <strong>${fmtDec(iy, 2)} €/año</strong>${taxLabel}</div>
                 `;
             } else if (diffEnergia <= 0) {
-                resultHTML = `<strong style="color:var(--pvpc)">PVPC</strong> es más barata en todos los niveles de consumo con estos precios.`;
+                resultHTML = `<strong style="color:#3b82f6">PVPC</strong> es más barata en todos los niveles de consumo con estos precios.`;
             } else {
-                resultHTML = `<strong style="color:var(--libre)">La tarifa del mercado libre</strong> es más barata en todos los niveles de consumo con estos precios.`;
+                resultHTML = `<strong style="color:#f43f5e">La tarifa del mercado libre</strong> es más barata en todos los niveles de consumo con estos precios.`;
             }
             document.getElementById('result').innerHTML = resultHTML;
 
-            // Annotations: dashed lines for intersection + avg consumption
+            // Build datasets: if intersection exists, split into winner/loser segments
+            const COL_PVPC = '#3b82f6';
+            const COL_LIBRE = '#f43f5e';
+            const datasets = [];
+
+            if (hasIntersection) {
+                const pvpcIy = iy;
+                const libreIy = iy;
+                const pvpcSplit = splitAtX(pvpcAll, ix, pvpcIy);
+                const libreSplit = splitAtX(libreAll, ix, libreIy);
+
+                // Before intersection: PVPC is cheaper (winner)
+                datasets.push({
+                    label: 'PVPC (Regulada)',
+                    data: pvpcSplit.before,
+                    borderColor: COL_PVPC,
+                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                    borderWidth: 4,
+                    fill: 'origin',
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: COL_PVPC
+                });
+                // After intersection: PVPC is loser (thin, no fill)
+                datasets.push({
+                    label: '_pvpc_after',
+                    data: pvpcSplit.after,
+                    borderColor: 'rgba(59, 130, 246, 0.35)',
+                    borderWidth: 1.5,
+                    borderDash: [4, 3],
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: COL_PVPC
+                });
+                // Before intersection: Libre is loser (thin, no fill)
+                datasets.push({
+                    label: 'Tarifa Mercado Libre',
+                    data: libreSplit.before,
+                    borderColor: 'rgba(244, 63, 94, 0.35)',
+                    borderWidth: 1.5,
+                    borderDash: [4, 3],
+                    fill: false,
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: COL_LIBRE
+                });
+                // After intersection: Libre is cheaper (winner)
+                datasets.push({
+                    label: '_libre_after',
+                    data: libreSplit.after,
+                    borderColor: COL_LIBRE,
+                    backgroundColor: 'rgba(244, 63, 94, 0.15)',
+                    borderWidth: 4,
+                    fill: 'origin',
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: COL_LIBRE
+                });
+            } else {
+                // No intersection: determine which is always cheaper
+                const pvpcCheaper = diffEnergia <= 0;
+                datasets.push({
+                    label: 'PVPC (Regulada)',
+                    data: pvpcAll,
+                    borderColor: COL_PVPC,
+                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                    borderWidth: pvpcCheaper ? 4 : 1.5,
+                    borderDash: pvpcCheaper ? [] : [4, 3],
+                    fill: pvpcCheaper ? 'origin' : false,
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: COL_PVPC
+                });
+                datasets.push({
+                    label: 'Tarifa Mercado Libre',
+                    data: libreAll,
+                    borderColor: COL_LIBRE,
+                    backgroundColor: 'rgba(244, 63, 94, 0.15)',
+                    borderWidth: pvpcCheaper ? 1.5 : 4,
+                    borderDash: pvpcCheaper ? [4, 3] : [],
+                    fill: pvpcCheaper ? false : 'origin',
+                    tension: 0,
+                    pointRadius: 0,
+                    pointHoverRadius: 5,
+                    pointHoverBackgroundColor: COL_LIBRE
+                });
+            }
+
+            // Annotations
             const annotations = {};
 
-            // Average household consumption vertical line
+            // Average household consumption
             if (CONSUMO_MEDIO_HOGAR <= maxConsumo) {
                 annotations.avgLine = {
                     type: 'line',
@@ -451,47 +573,34 @@
             }
 
             // Intersection dashed lines + point
-            if (ix !== null && ix >= 0 && ix <= maxConsumo) {
+            if (hasIntersection) {
                 annotations.crossLineV = {
                     type: 'line',
-                    xMin: ix,
-                    xMax: ix,
-                    yMin: 0,
-                    yMax: iy,
+                    xMin: ix, xMax: ix, yMin: 0, yMax: iy,
                     borderColor: 'rgba(16, 185, 129, 0.5)',
                     borderWidth: 2,
                     borderDash: [6, 4]
                 };
                 annotations.crossLineH = {
                     type: 'line',
-                    xMin: 0,
-                    xMax: ix,
-                    yMin: iy,
-                    yMax: iy,
+                    xMin: 0, xMax: ix, yMin: iy, yMax: iy,
                     borderColor: 'rgba(16, 185, 129, 0.5)',
                     borderWidth: 2,
                     borderDash: [6, 4]
                 };
                 annotations.crossPoint = {
                     type: 'point',
-                    xValue: ix,
-                    yValue: iy,
+                    xValue: ix, yValue: iy,
                     radius: 7,
                     backgroundColor: '#10b981',
                     borderColor: '#fff',
-                    borderWidth: 2.5,
-                    shadowOffsetX: 0,
-                    shadowOffsetY: 2,
-                    shadowBlur: 6,
-                    shadowColor: 'rgba(16,185,129,0.35)'
+                    borderWidth: 2.5
                 };
                 annotations.crossLabel = {
                     type: 'label',
-                    xValue: ix,
-                    yValue: iy,
-                    xAdjust: 0,
-                    yAdjust: -22,
-                    content: `${Math.round(ix).toLocaleString('es-ES')} kWh · ${iy.toFixed(0)} €`,
+                    xValue: ix, yValue: iy,
+                    xAdjust: 0, yAdjust: -22,
+                    content: `${fmtInt(ix)} kWh · ${fmtDec(iy, 0)} €`,
                     color: '#065f46',
                     backgroundColor: 'rgba(209, 250, 229, 0.95)',
                     borderColor: '#a7f3d0',
@@ -501,33 +610,6 @@
                     padding: { x: 8, y: 4 }
                 };
             }
-
-            const datasets = [
-                {
-                    label: 'PVPC (Regulada)',
-                    data: pvpcData,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.06)',
-                    borderWidth: 3,
-                    fill: false,
-                    tension: 0,
-                    pointRadius: 0,
-                    pointHoverRadius: 5,
-                    pointHoverBackgroundColor: '#3b82f6'
-                },
-                {
-                    label: 'Tarifa Mercado Libre',
-                    data: libreData,
-                    borderColor: '#f43f5e',
-                    backgroundColor: 'rgba(244, 63, 94, 0.06)',
-                    borderWidth: 3,
-                    fill: false,
-                    tension: 0,
-                    pointRadius: 0,
-                    pointHoverRadius: 5,
-                    pointHoverBackgroundColor: '#f43f5e'
-                }
-            ];
 
             if (chart) chart.destroy();
 
@@ -545,7 +627,8 @@
                                 usePointStyle: true,
                                 pointStyle: 'circle',
                                 padding: 20,
-                                font: { size: 13, weight: '600', family: 'Inter' }
+                                font: { size: 13, weight: '600', family: 'Inter' },
+                                filter: (item) => !item.text.startsWith('_')
                             }
                         },
                         tooltip: {
@@ -555,8 +638,13 @@
                             padding: 12,
                             cornerRadius: 10,
                             callbacks: {
-                                title: (items) => `Consumo: ${Math.round(items[0].parsed.x).toLocaleString('es-ES')} kWh/año`,
-                                label: (item) => ` ${item.dataset.label}: ${item.parsed.y.toFixed(2)} €/año`
+                                title: (items) => `Consumo: ${fmtInt(items[0].parsed.x)} kWh/año`,
+                                label: (item) => {
+                                    const name = item.dataset.label.startsWith('_')
+                                        ? (item.dataset.label.includes('pvpc') ? 'PVPC (Regulada)' : 'Tarifa Mercado Libre')
+                                        : item.dataset.label;
+                                    return ` ${name}: ${fmtDec(item.parsed.y, 2)} €/año`;
+                                }
                             }
                         },
                         annotation: { annotations }
@@ -575,7 +663,7 @@
                             ticks: {
                                 font: { size: 11, family: 'Inter' },
                                 color: '#94a3b8',
-                                callback: (val) => val.toLocaleString('es-ES')
+                                callback: (val) => fmtInt(val)
                             },
                             grid: { color: 'rgba(226, 232, 240, 0.6)' }
                         },
@@ -589,7 +677,7 @@
                             ticks: {
                                 font: { size: 11, family: 'Inter' },
                                 color: '#94a3b8',
-                                callback: (val) => val.toFixed(0) + ' €'
+                                callback: (val) => fmtInt(val) + ' €'
                             },
                             grid: { color: 'rgba(226, 232, 240, 0.6)' },
                             beginAtZero: true
